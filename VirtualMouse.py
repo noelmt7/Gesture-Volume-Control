@@ -55,7 +55,15 @@ while True:
                 length = np.hypot(x2 - x1, y2 - y1)
                 if length < 40:
                     pyautogui.click()
+                    # Draw selection highlight
+                    cv2.circle(img, (x1, y1), 15, (0, 255, 0), cv2.FILLED)
+                    cv2.circle(img, (x2, y2), 15, (0, 255, 0), cv2.FILLED)
+                else:
+                    # Draw normal finger tips
+                    cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
+                    cv2.circle(img, (x2, y2), 15, (255, 0, 255), cv2.FILLED)
 
+            # Draw the hand landmarks on the image
             mp_draw.draw_landmarks(img, hand_landmarks, mp_hands.HAND_CONNECTIONS)
     
     cTime = time.time()
