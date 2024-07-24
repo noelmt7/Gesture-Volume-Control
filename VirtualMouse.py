@@ -1,76 +1,60 @@
 import cv2
-import mediapipe as mp
-import time
-import pyautogui
 import numpy as np
+import time
+import HandTracking as ht
+import autopy  # Install using "pip install autopy"
 
-# Initialize mediapipe hand detector
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(max_num_hands=1)
-mp_draw = mp.solutions.drawing_utils
+# Variables Declaration
+pTime = 0  # Used to calculate frame rate
+width = 640  # Width of Camera
+height = 480  # Height of Camera
+frameR = 100  # Frame Rate
+smoothening = 8  # Smoothening Factor
+prev_x, prev_y = 0, 0  # Previous coordinates
+curr_x, curr_y = 0, 0  # Current coordinates
 
-# Screen and camera dimensions
-wScr, hScr = pyautogui.size()
-wCam, hCam = 640, 480
+cap = cv2.VideoCapture(0)  # Getting video feed from the webcam
+cap.set(3, width)  # Adjusting size
+cap.set(4, height)
 
-cap = cv2.VideoCapture(0)
-cap.set(3, wCam)
-cap.set(4, hCam)
-
-pTime = 0
-smoothening = 5
-plocX, plocY = 0, 0
-clocX, clocY = 0, 0
+detector = ht.handDetector(maxHands=1)  # Detecting one hand at max
+screen_width, screen_height = autopy.screen.size()  # Getting the screen size
 
 while True:
     success, img = cap.read()
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    results = hands.process(img_rgb)
-    
-    if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            lm_list = []
-            for id, lm in enumerate(hand_landmarks.landmark):
-                h, w, c = img.shape
-                cx, cy = int(lm.x * w), int(lm.y * h)
-                lm_list.append([id, cx, cy])
+    img = detector.findHands(img)  # Finding the hand
+    lmlist, bbox = detector.findPosition(img)  # Getting position of hand
 
-            if lm_list:
-                x1, y1 = lm_list[8][1], lm_list[8][2]  # Index finger tip
-                x2, y2 = lm_list[12][1], lm_list[12][2]  # Middle finger tip
+    if len(lmlist) != 0:
+        x1, y1 = lmlist[8][1:]  # Index finger tip
+        x2, y2 = lmlist[12][1:]  # Middle finger tip
 
-                # Convert Coordinates
-                x3 = np.interp(x1, (75, 640-75), (0, wScr))
-                y3 = np.interp(y1, (75, 480-75), (0, hScr))
+        fingers = detector.fingersUp()  # Checking if fingers are upwards
+        cv2.rectangle(img, (frameR, frameR), (width - frameR, height - frameR), (255, 0, 255), 2)  # Creating boundary box
 
-                # Smooth Values
-                clocX = plocX + (x3 - plocX) / smoothening
-                clocY = plocY + (y3 - plocY) / smoothening
+        if fingers[1] == 1 and fingers[2] == 0:  # If fore finger is up and middle finger is down
+            x3 = np.interp(x1, (frameR, width - frameR), (0, screen_width))
+            y3 = np.interp(y1, (frameR, height - frameR), (0, screen_height))
 
-                # Move Mouse
-                pyautogui.moveTo(wScr - clocX, clocY)
-                plocX, plocY = clocX, clocY
+            curr_x = prev_x + (x3 - prev_x) / smoothening
+            curr_y = prev_y + (y3 - prev_y) / smoothening
 
-                # Click Mouse
-                length = np.hypot(x2 - x1, y2 - y1)
-                if length < 40:
-                    pyautogui.click()
-                    # Draw selection highlight
-                    cv2.circle(img, (x1, y1), 15, (0, 255, 0), cv2.FILLED)
-                    cv2.circle(img, (x2, y2), 15, (0, 255, 0), cv2.FILLED)
-                else:
-                    # Draw normal finger tips
-                    cv2.circle(img, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
-                    cv2.circle(img, (x2, y2), 15, (255, 0, 255), cv2.FILLED)
+            autopy.mouse.move(screen_width - curr_x, curr_y)  # Moving the cursor
+            cv2.circle(img, (x1, y1), 7, (255, 0, 255), cv2.FILLED)
+            prev_x, prev_y = curr_x, curr_y
 
-            # Draw the hand landmarks on the image
-            mp_draw.draw_landmarks(img, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-    
+        if fingers[1] == 1 and fingers[2] == 1:  # If fore finger & middle finger both are up
+            length, img, lineInfo = detector.findDistance(8, 12, img)
+
+            if length < 40:  # If both fingers are really close to each other
+                cv2.circle(img, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
+                autopy.mouse.click()  # Perform Click
+
     cTime = time.time()
     fps = 1 / (cTime - pTime)
     pTime = cTime
-    cv2.putText(img, f'FPS: {int(fps)}', (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
-    cv2.imshow("Img", img)
+    cv2.putText(img, str(int(fps)), (20, 50), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 0), 3)
+    cv2.imshow("Image", img)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
