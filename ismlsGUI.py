@@ -1,10 +1,10 @@
-import tkinter as tk
+import customtkinter as ctk
 import subprocess
 import os
 
 # Paths to your existing Python scripts
-video_control_script = 'videocontrol.py'
-audio_control_script = 'path/to/your/audio_control_script.py'
+video_control_script = 'Gesture Volume Control/videocontrol.py'
+audio_control_script = 'Gesture Volume Control/videocontrol.py'
 mouse_tracking_script = 'D:\Christ\Sem 4\SP\Gesture-Volume-Control\mouse.py'
 
 # Placeholder functions for subprocesses
@@ -73,33 +73,55 @@ def enable_all_features():
     var_mouse_tracking.set(1)
     toggle_features()
 
+def end_program():
+    stop_video_control()
+    stop_audio_control()
+    stop_mouse_tracking()
+    root.destroy()
+
+# Initialize customtkinter
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
 # Create the main window
-root = tk.Tk()
+root = ctk.CTk()
 root.title("Gesture Control GUI")
+root.geometry("400x300")  # Set window size
+
+# Configure grid to center align the widgets
+root.grid_columnconfigure(0, weight=1)
+for i in range(6):
+    root.grid_rowconfigure(i, weight=1)
 
 # Create variables to store the state of each feature
-var_video = tk.IntVar()
-var_audio = tk.IntVar()
-var_mouse_tracking = tk.IntVar()
+var_video = ctk.IntVar()
+var_audio = ctk.IntVar()
+var_mouse_tracking = ctk.IntVar()
+
+# Font configuration
+font_config = ('Comic Sans', 14)
 
 # Create checkboxes for each feature
-chk_video = tk.Checkbutton(root, text="Control Video", variable=var_video)
-chk_video.grid(row=0, column=0, sticky='w')
+# Create checkboxes for each feature
+chk_video = ctk.CTkCheckBox(root, text="Control Video", variable=var_video, font=font_config)
+chk_video.grid(row=0, column=0, sticky='nsew', padx=20, pady=10)
 
-chk_audio = tk.Checkbutton(root, text="Control Audio", variable=var_audio)
-chk_audio.grid(row=1, column=0, sticky='w')
+chk_audio = ctk.CTkCheckBox(root, text="Control Audio", variable=var_audio, font=font_config)
+chk_audio.grid(row=1, column=0, sticky='nsew', padx=20, pady=10)
 
-chk_mouse_tracking = tk.Checkbutton(root, text="Mouse Tracking", variable=var_mouse_tracking)
-chk_mouse_tracking.grid(row=2, column=0, sticky='w')
+chk_mouse_tracking = ctk.CTkCheckBox(root, text="Mouse Tracking", variable=var_mouse_tracking, font=font_config)
+chk_mouse_tracking.grid(row=2, column=0, sticky='nsew', padx=20, pady=10)
 
 # Create a button to toggle the selected features
-btn_toggle = tk.Button(root, text="Toggle Features", command=toggle_features)
-btn_toggle.grid(row=3, column=0, pady=10)
+btn_toggle = ctk.CTkButton(root, text="Start", command=toggle_features, font=font_config)
+btn_toggle.grid(row=3, column=0, pady=10, padx=20, sticky='nsew')
 
 # Create a button to enable all features at once
-btn_enable_all = tk.Button(root, text="Enable All Features", command=enable_all_features)
-btn_enable_all.grid(row=4, column=0, pady=10)
+btn_enable_all = ctk.CTkButton(root, text="Enable All Features", command=enable_all_features, font=font_config)
+btn_enable_all.grid(row=4, column=0, pady=10, padx=20, sticky='nsew')
 
-# Start the main event loop
+# Create a button to end the program
+btn_end = ctk.CTkButton(root, text="End", command=end_program, font=font_config)
+btn_end.grid(row=5, column=0, pady=10, padx=20, sticky='nsew')
+
 root.mainloop()
-
