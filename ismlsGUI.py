@@ -3,9 +3,9 @@ import subprocess
 import os
 
 # Paths to your existing Python scripts
-video_control_script = 'Gesture Volume Control/videocontrol.py'
-audio_control_script = 'Gesture Volume Control/videocontrol.py'
-mouse_tracking_script = 'D:\Christ\Sem 4\SP\Gesture-Volume-Control\mouse.py'
+video_control_script = 'videocontrol.py'
+audio_control_script = 'VolumeHandControl.py'
+mouse_tracking_script = 'mouse.py'
 
 # Placeholder functions for subprocesses
 video_process = None
