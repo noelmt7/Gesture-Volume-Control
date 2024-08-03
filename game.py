@@ -1,8 +1,7 @@
 import cv2
 import time
-import numpy as np
-import HandTrackingModule as htm
 import pyautogui
+import HandTrackingModule as htm  # Assuming this is your handDetector class
 
 # Camera settings
 wCam, hCam = 640, 480
@@ -32,6 +31,10 @@ def fingersUp(lmList):
 
 while True:
     success, img = cap.read()
+    if not success:
+        print("Failed to capture image")
+        break
+
     img = detector.findHands(img)
     lmList = detector.findPosition(img, draw=False)
     if len(lmList) != 0:
@@ -44,22 +47,15 @@ while True:
         elif fingers == [0, 0, 0, 0, 0]:
             pyautogui.press('down')  # Closed hand -> Down arrow key
             cv2.putText(img, 'DOWN', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 3)
-        elif fingers == [1, 0, 0, 0, 0]:
-            pyautogui.press('w')  # Move forward
-            cv2.putText(img, 'W', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
-        elif fingers == [0, 1, 0, 0, 0]:
-            pyautogui.press('a')  # Move left
-            cv2.putText(img, 'A', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
-        elif fingers == [0, 0, 1, 0, 0]:
-            pyautogui.press('s')  # Move backward
-            cv2.putText(img, 'S', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
-        elif fingers == [0, 0, 0, 1, 0]:
-            pyautogui.press('d')  # Move right
-            cv2.putText(img, 'D', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
 
     cTime = time.time()
     fps = 1 / (cTime - pTime)
     pTime = cTime
     cv2.putText(img, f'FPS: {int(fps)}', (40, 50), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 0, 0), 3)
+    
     cv2.imshow("Img", img)
-    cv2.waitKey(1)
+    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
+        break
+
+cap.release()
+cv2.destroyAllWindows()
