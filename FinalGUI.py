@@ -7,11 +7,13 @@ from PIL import Image
 video_control_script = 'videocontrol.py'
 audio_control_script = 'VolumeHandControl.py'
 mouse_tracking_script = 'mouse.py'
+rock_paper_scissors_script = 'Gesture Volume Control/rock_paper_scissors.py'
 
 # Placeholder functions for subprocesses
 video_process = None
 audio_process = None
 mouse_process = None
+rps_process = None
 
 def start_video_control():
     global video_process
@@ -52,6 +54,19 @@ def stop_mouse_tracking():
         mouse_process = None
         print("Mouse tracking stopped")
 
+def start_rock_paper_scissors():
+    global rps_process
+    if rps_process is None:
+        rps_process = subprocess.Popen(['python', rock_paper_scissors_script])
+        print("Rock Paper Scissors started")
+
+def stop_rock_paper_scissors():
+    global rps_process
+    if rps_process is not None:
+        rps_process.terminate()
+        rps_process = None  
+        print("Rock Paper Scissors stopped")
+
 def toggle_features():
     if var_video.get():
         start_video_control()
@@ -67,17 +82,24 @@ def toggle_features():
         start_mouse_tracking()
     else:
         stop_mouse_tracking()
+    
+    if var_rps.get():
+        start_rock_paper_scissors()
+    else:
+        stop_rock_paper_scissors()
 
 def enable_all_features():
     var_video.set(1)
     var_audio.set(1)
     var_mouse_tracking.set(1)
+    var_rps.set(1)
     toggle_features()
 
 def end_program():
     stop_video_control()
     stop_audio_control()
     stop_mouse_tracking()
+    stop_rock_paper_scissors()
     root.destroy()
 
 # Initialize customtkinter
@@ -94,7 +116,6 @@ root.grid_columnconfigure(0, weight=1)
 for i in range(8):
     root.grid_rowconfigure(i, weight=1)
 
-
 image_path = "Gesture Volume Control/1.png"
 
 main_image = ctk.CTkImage(Image.open(image_path), size=(200, 200))  # Adjust size as needed
@@ -106,9 +127,10 @@ image_label.grid(row=1, column=0, pady=10, padx=20, sticky='nsew')
 var_video = ctk.IntVar()
 var_audio = ctk.IntVar()
 var_mouse_tracking = ctk.IntVar()
+var_rps = ctk.IntVar()  # Add this line
 
 # Font configuration
-font_config = ('  Sans', 14)
+font_config = ('Sans', 14)
 
 # Create checkboxes for each feature
 chk_video = ctk.CTkCheckBox(root, text="Control Video", variable=var_video, font=font_config)
@@ -120,16 +142,19 @@ chk_audio.grid(row=3, column=0, sticky='nsew', padx=20, pady=10)
 chk_mouse_tracking = ctk.CTkCheckBox(root, text="Mouse Tracking", variable=var_mouse_tracking, font=font_config)
 chk_mouse_tracking.grid(row=4, column=0, sticky='nsew', padx=20, pady=10)
 
+chk_rps = ctk.CTkCheckBox(root, text="Rock Paper Scissors", variable=var_rps, font=font_config)  # Add this line
+chk_rps.grid(row=5, column=0, sticky='nsew', padx=20, pady=10)
+
 # Create a button to toggle the selected features
 btn_toggle = ctk.CTkButton(root, text="Start", command=toggle_features, font=font_config)
-btn_toggle.grid(row=5, column=0, pady=10, padx=20, sticky='nsew')
+btn_toggle.grid(row=6, column=0, pady=10, padx=20, sticky='nsew')
 
-# Create a button to enable all features at on
+# Create a button to enable all features at once
 btn_enable_all = ctk.CTkButton(root, text="Enable All Features", command=enable_all_features, font=font_config)
-btn_enable_all.grid(row=6, column=0, pady=10, padx=20, sticky='nsew')
+btn_enable_all.grid(row=7, column=0, pady=10, padx=20, sticky='nsew')
 
 # Create a button to end the program
 btn_end = ctk.CTkButton(root, text="End", command=end_program, font=font_config)
-btn_end.grid(row=7, column=0, pady=10, padx=20, sticky='nsew')
+btn_end.grid(row=8, column=0, pady=10, padx=20, sticky='nsew')
 
 root.mainloop()
