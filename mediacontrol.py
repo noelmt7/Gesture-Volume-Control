@@ -2,12 +2,13 @@ import cv2
 import time
 import numpy as np
 import HandTrackingModule as htm
+import pyautogui
 import math
 from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
-class HandVolumeControl:
+class HandControl:
     def __init__(self, wCam=640, hCam=480, detectionCon=0.7):
         self.wCam, self.hCam = wCam, hCam
         self.cap = cv2.VideoCapture(0)
@@ -17,6 +18,7 @@ class HandVolumeControl:
 
         self.detector = htm.handDetector(detectionCon=detectionCon)
 
+        # Audio control setup
         devices = AudioUtilities.GetSpeakers()
         interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
         self.volume = interface.QueryInterface(IAudioEndpointVolume)
@@ -24,6 +26,24 @@ class HandVolumeControl:
 
         self.minVol = self.volRange[0]
         self.maxVol = self.volRange[1]
+
+        # Media control state
+        self.mediaControl = {"playing": False, "paused": False}
+
+    def fingersUp(self, lmList):
+        fingers = []
+        # Thumb
+        if lmList[4][1] > lmList[3][1]:
+            fingers.append(1)
+        else:
+            fingers.append(0)
+        # 4 Fingers
+        for id in range(8, 21, 4):
+            if lmList[id][2] < lmList[id - 2][2]:
+                fingers.append(1)
+            else:
+                fingers.append(0)
+        return fingers
 
     def process_frame(self):
         success, img = self.cap.read()
@@ -35,12 +55,24 @@ class HandVolumeControl:
         lmList = self.detector.findPosition(img, draw=False)
 
         if len(lmList) != 0:
-            # Thumb
+            # Media control logic
+            fingers = self.fingersUp(lmList)
+            if fingers.count(1) == 5:
+                if not self.mediaControl["playing"]:
+                    pyautogui.press("playpause")
+                    self.mediaControl["playing"] = True
+                    self.mediaControl["paused"] = False
+            elif fingers.count(1) == 0:
+                if not self.mediaControl["paused"]:
+                    pyautogui.press("playpause")
+                    self.mediaControl["paused"] = True
+                    self.mediaControl["playing"] = False
+
+            # Thumb and Index finger for volume control
             thumb_tip = lmList[4][1:3]
             thumb_ip = lmList[3][1:3]
             thumb_open = thumb_tip[0] > thumb_ip[0]  # Right hand, for left hand thumb_tip[0] < thumb_ip[0]
 
-            # Index finger
             index_tip = lmList[8][1:3]
             index_mcp = lmList[5][1:3]
             index_open = index_tip[1] < index_mcp[1]
@@ -67,13 +99,13 @@ class HandVolumeControl:
         return img
 
 if __name__ == "__main__":
-    handVolumeControl = HandVolumeControl()
+    handControl = HandControl()
     while True:
-        img = handVolumeControl.process_frame()
+        img = handControl.process_frame()
         if img is not None:
             cv2.imshow("Img", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    handVolumeControl.cap.release()
+    handControl.cap.release()
     cv2.destroyAllWindows()
