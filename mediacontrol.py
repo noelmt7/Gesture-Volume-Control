@@ -3,10 +3,6 @@ import time
 import numpy as np
 import HandTrackingModule as htm
 import pyautogui
-import math
-from ctypes import cast, POINTER
-from comtypes import CLSCTX_ALL
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
 class HandControl:
     def __init__(self, wCam=640, hCam=480, detectionCon=0.7):
@@ -18,17 +14,11 @@ class HandControl:
 
         self.detector = htm.handDetector(detectionCon=detectionCon)
 
-        # Audio control setup
-        devices = AudioUtilities.GetSpeakers()
-        interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-        self.volume = interface.QueryInterface(IAudioEndpointVolume)
-        self.volRange = self.volume.GetVolumeRange()
-
-        self.minVol = self.volRange[0]
-        self.maxVol = self.volRange[1]
-
         # Media control state
         self.mediaControl = {"playing": False, "paused": False}
+        self.lastActionTime = 0
+        self.message = ""
+        self.messageTime = 0
 
     def fingersUp(self, lmList):
         fingers = []
@@ -54,42 +44,40 @@ class HandControl:
         img = self.detector.findHands(img)
         lmList = self.detector.findPosition(img, draw=False)
 
+        currentTime = time.time()
+
         if len(lmList) != 0:
-            # Media control logic
             fingers = self.fingersUp(lmList)
-            if fingers.count(1) == 5:
-                if not self.mediaControl["playing"]:
+            if fingers.count(1) == 5 and not self.mediaControl["playing"]:
+                if currentTime - self.lastActionTime > 1:  # Prevents repeated commands
                     pyautogui.press("playpause")
                     self.mediaControl["playing"] = True
                     self.mediaControl["paused"] = False
-            elif fingers.count(1) == 0:
-                if not self.mediaControl["paused"]:
+                    self.message = "Paused"
+                    self.messageTime = currentTime
+                    self.lastActionTime = currentTime
+
+            elif fingers.count(1) == 0 and not self.mediaControl["paused"]:
+                if currentTime - self.lastActionTime > 1:  # Prevents repeated commands
                     pyautogui.press("playpause")
                     self.mediaControl["paused"] = True
                     self.mediaControl["playing"] = False
+                    self.message = "Resumed"
+                    self.messageTime = currentTime
+                    self.lastActionTime = currentTime
 
-            # Thumb and Index finger for volume control
-            thumb_tip = lmList[4][1:3]
-            thumb_ip = lmList[3][1:3]
-            thumb_open = thumb_tip[0] > thumb_ip[0]  # Right hand, for left hand thumb_tip[0] < thumb_ip[0]
-
-            index_tip = lmList[8][1:3]
-            index_mcp = lmList[5][1:3]
-            index_open = index_tip[1] < index_mcp[1]
-
-            # Decrease volume if thumb is open
-            if thumb_open:
-                currentVol = self.volume.GetMasterVolumeLevel()
-                newVol = max(currentVol - 1, self.minVol)
-                self.volume.SetMasterVolumeLevel(newVol, None)
-                cv2.putText(img, 'Volume Down', (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-
-            # Increase volume if index finger is open
-            elif index_open:
-                currentVol = self.volume.GetMasterVolumeLevel()
-                newVol = min(currentVol + 1, self.maxVol)
-                self.volume.SetMasterVolumeLevel(newVol, None)
+            # Check if only the thumb or index finger is up
+            if fingers[1:] == [1, 0, 0, 0] and not fingers[0]:  # Index finger up
                 cv2.putText(img, 'Volume Up', (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
+                # Code to increase volume
+
+            elif fingers[0] and not any(fingers[1:]):  # Thumb up
+                cv2.putText(img, 'Volume Down', (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+                # Code to decrease volume
+
+        # Display pause/resume message for at least 7 seconds
+        if self.message and currentTime - self.messageTime <= 7:
+            cv2.putText(img, self.message, (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 5)
 
         cTime = time.time()
         fps = 1 / (cTime - self.pTime)

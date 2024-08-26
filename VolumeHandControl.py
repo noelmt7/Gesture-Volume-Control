@@ -2,60 +2,33 @@ import cv2
 import time
 import numpy as np
 import HandTrackingModule as htm
-import pyautogui
+import math
+from ctypes import cast, POINTER
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
-# Camera settings
-wCam, hCam = 640, 480
-cap = cv2.VideoCapture(0)
-cap.set(3, wCam)
-cap.set(4, hCam)
-pTime = 0
+class HandVolumeControl:
+    def __init__(self, wCam=640, hCam=480, detectionCon=0.7):
+        self.wCam, self.hCam = wCam, hCam
+        self.cap = cv2.VideoCapture(0)
+        self.cap.set(3, self.wCam)
+        self.cap.set(4, self.hCam)
+        self.pTime = 0
 
-# Hand detector
-detector = htm.handDetector(detectionCon=0.7)
+        self.detector = htm.handDetector(detectionCon=detectionCon)
 
-# Function to check which fingers are up
-def fingersUp(lmList):
-    fingers = []
-    # Thumb
-    if lmList[4][1] > lmList[3][1]:
-        fingers.append(1)
-    else:
-        fingers.append(0)
-    # 4 Fingers
-    for id in range(8, 21, 4):
-        if lmList[id][2] < lmList[id - 2][2]:
-            fingers.append(1)
-        else:
-            fingers.append(0)
-    return fingers
+        devices = AudioUtilities.GetSpeakers()
+        interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+        self.volume = interface.QueryInterface(IAudioEndpointVolume)
+        self.volRange = self.volume.GetVolumeRange()
 
-while True:
-    success, img = cap.read()
-    img = detector.findHands(img)
-    lmList = detector.findPosition(img, draw=False)
-    if len(lmList) != 0:
-        fingers = fingersUp(lmList)
+        self.minVol = self.volRange[0]
+        self.maxVol = self.volRange[1]
 
-        # Mapping gestures to keys
-        if fingers == [1, 1, 1, 1, 1]:
-            pyautogui.press('up')  # Open hand -> Up arrow key
-            cv2.putText(img, 'UP', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
-        elif fingers == [0, 0, 0, 0, 0]:
-            pyautogui.press('down')  # Closed hand -> Down arrow key
-            cv2.putText(img, 'DOWN', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 3)
-        elif fingers == [1, 0, 0, 0, 0]:
-            pyautogui.press('w')  # Move forward
-            cv2.putText(img, 'W', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
-        elif fingers == [0, 1, 0, 0, 0]:
-            pyautogui.press('a')  # Move left
-            cv2.putText(img, 'A', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
-        elif fingers == [0, 0, 1, 0, 0]:
-            pyautogui.press('s')  # Move backward
-            cv2.putText(img, 'S', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
-        elif fingers == [0, 0, 0, 1, 0]:
-            pyautogui.press('d')  # Move right
-            cv2.putText(img, 'D', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
+    def process_frame(self):
+        success, img = self.cap.read()
+        if not success:
+            return None  # Return None if frame is not captured successfully
 
         img = cv2.flip(img, 1)
         img = self.detector.findHands(img)
