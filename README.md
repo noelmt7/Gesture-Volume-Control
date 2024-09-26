@@ -57,4 +57,4 @@ The Gesture Control Project is an innovative application designed to provide use
 - OpenCV
 - MediaPipe
 - Pygame (for games)
-- Other dependencies listed in `requirements.txt`
+- Pyinput
